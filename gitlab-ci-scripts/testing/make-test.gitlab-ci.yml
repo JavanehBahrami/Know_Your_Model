@@ -1,0 +1,27 @@
+stages:
+  - test
+
+variables:
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  paths:
+    - .cache/pip
+
+unit-tests:
+  stage: test
+  only:
+    - merge_requests
+  before_script:
+    - poetry source add internal https://pypi.aimedic.tech
+    - poetry config repositories.internal https://pypi.aimedic.tech
+    - poetry config http-basic.internal $PYPI_USERNAME $PYPI_PASSWORD --local
+    # Install poetry
+    - source /root/.venv/bin/activate
+    - poetry install
+  script:
+    - echo "unit tests.."
+  #   - coverage run -m pytest -v -m unit --junitxml=unit-tests-report.xml
+  #   - coverage report
+  #   - coverage-badge -o unit-coverage.svg
+  # coverage: '/TOTAL.+ ([0-9]{1,3}%)/'

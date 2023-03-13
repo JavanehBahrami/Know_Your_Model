@@ -1,0 +1,40 @@
+stages:
+  - publish
+
+variables:
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  paths:
+    - .cache/pip
+
+Publish:
+  stage: publish
+  only:
+    - master
+  before_script:
+    # Configure git
+    - git config --global user.email "${GIT_USER_EMAIL:-$GITLAB_USER_EMAIL}"
+    - git config --global user.name "${GIT_USER_NAME:-$GITLAB_USER_NAME}"
+    - echo "gitlab origin -> ${GITLAB_ORIGIN}"
+    - git remote remove gitlab_origin || true
+    - git remote add gitlab_origin "${GITLAB_ORIGIN}"
+
+    - poetry source add internal https://pypi.aimedic.tech
+    - poetry config repositories.internal https://pypi.aimedic.tech
+    - poetry config http-basic.internal $PYPI_USERNAME $PYPI_PASSWORD --local
+    # Install poetry
+    - source /root/.venv/bin/activate
+    - poetry install
+  script:
+    # Increment patch version and publish to PyPi
+    - poetry version patch
+    - echo "versioned as $(poetry version)"
+    - echo "publishing to the remote.."
+    - poetry publish --build --repository internal -u "$PYPI_USERNAME" -p "$PYPI_PASSWORD"
+
+    # Update the repository
+    - git commit pyproject.toml -m "increments the version"
+  #  - echo "adding a git tag.."
+  #  - git tag -a "v$(poetry version --short)" -m "tagged the published version"
+    - git push gitlab_origin HEAD:$CI_COMMIT_REF_NAME --tags -o ci.skip

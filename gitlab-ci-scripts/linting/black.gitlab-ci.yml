@@ -1,0 +1,15 @@
+stages:
+  # Define Stage
+  - linting
+
+Black:
+  stage: linting
+  # Use custom image lint codes
+  image: pejmans21/python-linting
+  script:
+    - echo lint via black
+    # Just check code !
+    - black . --check
+  only:
+    # Run this stage only on merge_requests
+    - merge_requests

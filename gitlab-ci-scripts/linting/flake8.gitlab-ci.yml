@@ -1,0 +1,14 @@
+stages:
+  # Define Stage
+  - linting
+
+Flake8:
+  stage: linting
+  # Use custom image lint codes
+  image: pejmans21/python-linting
+  script:
+    - echo lint via flake8
+    - flake8 .
+  only:
+    # Run this stage only on merge_requests
+    - merge_requests

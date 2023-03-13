@@ -1,0 +1,55 @@
+Build Job:
+  stage: build
+  # Use Docker-In-Docker image
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    # Login to private registry
+    - docker login $DOCKER_REGISTRY_ADDRESS -u $HARBOR_USERNAME -p $HARBOR_PASSWORD
+  script:
+    # Path to Dockerfile
+    # Change if needed
+    - cd app/
+    - ls -al
+    # Pull latest image if exist!
+    - docker pull $DOCKER_REG/$IMAGE_NAME:latest || true
+    # Build Image based on Dockerfile
+    - >
+      docker build
+      --cache-from $DOCKER_REG/$IMAGE_NAME:latest
+      --tag $DOCKER_REG/$IMAGE_NAME:$IMAGE_TAG
+      .
+    # Push to private-registry
+    - docker push $DOCKER_REG/$IMAGE_NAME:$IMAGE_TAG
+  only:
+    # Only for master/main branch
+    - master
+    - main
+
+Push Latest:
+  # Pull recently created image & tag it as latest!
+  stage: push
+  # Use Docker-In-Docker image
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+    GIT_STRATEGY: none # Don't clone repo for this stage
+  before_script:
+    # Login to private registry
+    - docker login $DOCKER_REGISTRY_ADDRESS -u $HARBOR_USERNAME -p $HARBOR_PASSWORD
+  script:
+    # Pull Created image in previous step
+    - docker pull $DOCKER_REG/$IMAGE_NAME:$IMAGE_TAG
+    # Set image tag to latest
+    - docker tag $DOCKER_REG/$IMAGE_NAME:$IMAGE_TAG $DOCKER_REG/$IMAGE_NAME:latest
+    # Push latest image to private-registry
+    - docker push $DOCKER_REG/$IMAGE_NAME:latest
+  only:
+    # Only for master/main branch
+    - master
+    - main

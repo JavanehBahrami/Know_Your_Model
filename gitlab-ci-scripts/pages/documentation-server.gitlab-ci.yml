@@ -1,0 +1,48 @@
+stages:
+  - deploy
+
+variables:
+  # Use caching to run faster
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  paths:
+    # Caching path
+    - .cache/pip
+
+# Define Stage
+Deploy Pages:
+  # Set stage as deploy
+  stage: deploy
+  # Read & Add SSH_PRIVATE_KEY file to use rsync command
+  before_script:
+    - chmod 400 $SSHKEY_FILE
+    - chmod 700 $SSH_CONFIG
+    # Validate SSH_KEY_FILE
+    - "which ssh-agent || ( apt-get install -qq openssh-client )"
+    - eval $(ssh-agent -s)
+    - ssh-add <(cat $SSHKEY_FILE)
+    - mkdir -p ~/.ssh
+    - cat $SSH_CONFIG > ~/.ssh/config
+
+    - poetry source add internal https://pypi.aimedic.tech
+    - poetry config repositories.internal https://pypi.aimedic.tech
+    - poetry config http-basic.internal $PYPI_USERNAME $PYPI_PASSWORD --local
+    # Install poetry
+    - source /root/.venv/bin/activate
+    - poetry install
+    - poetry add mkdocs mkdocs-material mkdocstrings mkdocstrings-python
+  script:
+    - poetry run mkdocs build
+    # Rsync generated docs to server for serving
+    - >
+      rsync
+      -av
+      --progress
+      $(pwd)/site/ $DOCUMENTATION_SERVER_PATH/$(echo "$CI_PROJECT_NAME" | awk '{print tolower($0)}')/
+    # $(echo "$CI_PROJECT_NAME" | awk '{print tolower($0)}'): Convert CI_PROJECT_NAME value to lowercase
+    - echo "Documentation served at $SERVED_DOC"
+  # Run only on master branch
+  only:
+    - master
+    - main

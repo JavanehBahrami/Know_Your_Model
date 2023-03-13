@@ -1,0 +1,8 @@
+[virtualenvs]
+in-project = true
+
+[experimental]
+new-installer = false
+
+[repositories.internal]
+url = "https://pypi.aimedic.tech"
